@@ -16,7 +16,7 @@ func (o *options) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return repo.PushPolicy(cmd.Context(), args[0])
+	return repo.PushPolicy(args[0])
 }
 
 func New() *cobra.Command {

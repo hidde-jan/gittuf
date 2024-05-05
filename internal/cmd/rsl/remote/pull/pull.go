@@ -16,7 +16,7 @@ func (o *options) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return repo.PullRSL(cmd.Context(), args[0])
+	return repo.PullRSL(args[0])
 }
 
 func New() *cobra.Command {

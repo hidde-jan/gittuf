@@ -7,7 +7,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/go-git/go-git/v5"
+	"github.com/gittuf/gittuf/internal/gitinterface"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,12 +15,11 @@ import (
 func TestUpdatePrePushHook(t *testing.T) {
 	t.Run("write hook", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		repo := gitinterface.CreateTestGitRepository(t, tmpDir)
 
-		repo, err := git.PlainInit(tmpDir, false)
-		require.NoError(t, err)
 		r := &Repository{r: repo}
 
-		err = r.UpdateHook(HookPrePush, []byte("some content"), false)
+		err := r.UpdateHook(HookPrePush, []byte("some content"), false)
 		require.NoError(t, err)
 
 		hookFile := path.Join(tmpDir, ".git", "hooks", "pre-push")
@@ -31,14 +30,13 @@ func TestUpdatePrePushHook(t *testing.T) {
 
 	t.Run("hook exists", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		repo := gitinterface.CreateTestGitRepository(t, tmpDir)
 
-		repo, err := git.PlainInit(tmpDir, false)
-		require.NoError(t, err)
 		r := &Repository{r: repo}
 
 		hookDir := path.Join(tmpDir, ".git", "hooks")
 		hookFile := path.Join(hookDir, "pre-push")
-		err = os.Mkdir(hookDir, 0o750)
+		err := os.MkdirAll(hookDir, 0o750)
 		require.NoError(t, err)
 		err = os.WriteFile(hookFile, []byte("existing hook script"), 0o700) // nolint:gosec
 		require.NoError(t, err)
@@ -52,14 +50,13 @@ func TestUpdatePrePushHook(t *testing.T) {
 
 	t.Run("force overwrite hook", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		repo := gitinterface.CreateTestGitRepository(t, tmpDir)
 
-		repo, err := git.PlainInit(tmpDir, false)
-		require.NoError(t, err)
 		r := &Repository{r: repo}
 
 		hookDir := path.Join(tmpDir, ".git", "hooks")
 		hookFile := path.Join(hookDir, "pre-push")
-		err = os.Mkdir(hookDir, 0o750)
+		err := os.MkdirAll(hookDir, 0o750)
 		require.NoError(t, err)
 		err = os.WriteFile(hookFile, []byte("existing hook script"), 0o700) // nolint:gosec
 		require.NoError(t, err)

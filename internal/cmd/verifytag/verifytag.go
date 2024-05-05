@@ -19,7 +19,10 @@ func (o *options) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	status := repo.VerifyTag(cmd.Context(), args)
+	status, err := repo.VerifyTag(cmd.Context(), args)
+	if err != nil {
+		return err
+	}
 
 	for _, id := range args {
 		fmt.Printf("%s: %s\n", id, status[id])

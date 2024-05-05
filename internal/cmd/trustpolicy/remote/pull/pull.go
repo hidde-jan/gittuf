@@ -16,7 +16,7 @@ func (o *options) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return repo.PullPolicy(cmd.Context(), args[0])
+	return repo.PullPolicy(args[0])
 }
 
 func New() *cobra.Command {
