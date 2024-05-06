@@ -867,7 +867,7 @@ func TestVerifyTagEntry(t *testing.T) {
 		entryID = common.CreateTestRSLReferenceEntryCommit(t, repo, entry, gpgKeyBytes)
 		entry.ID = entryID
 
-		err := verifyTagEntry(testCtx, repo, policy, entry)
+		err := verifyTagEntry(testCtx, repo, policy, nil, entry)
 		assert.Nil(t, err)
 	})
 
@@ -887,7 +887,7 @@ func TestVerifyTagEntry(t *testing.T) {
 		entryID = common.CreateTestRSLReferenceEntryCommit(t, repo, entry, gpgKeyBytes)
 		entry.ID = entryID
 
-		err := verifyTagEntry(testCtx, repo, policy, entry)
+		err := verifyTagEntry(testCtx, repo, policy, nil, entry)
 		assert.Nil(t, err)
 	})
 
@@ -907,7 +907,7 @@ func TestVerifyTagEntry(t *testing.T) {
 		entryID = common.CreateTestRSLReferenceEntryCommit(t, repo, entry, gpgKeyBytes)
 		entry.ID = entryID
 
-		err := verifyTagEntry(testCtx, repo, policy, entry)
+		err := verifyTagEntry(testCtx, repo, policy, nil, entry)
 		assert.ErrorIs(t, err, ErrUnauthorizedSignature)
 	})
 }

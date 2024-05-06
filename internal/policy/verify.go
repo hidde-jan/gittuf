@@ -509,7 +509,7 @@ func VerifyTag(ctx context.Context, repo *gitinterface.Repository, ids []string)
 			continue
 		}
 
-		if err := verifyTagEntry(ctx, repo, policy, entry); err == nil {
+		if err := verifyTagEntry(ctx, repo, policy, nil, entry); err == nil {
 			status[id] = goodTagSignatureMessage
 		} else {
 			status[id] = err.Error()
@@ -542,7 +542,7 @@ func verifyEntry(ctx context.Context, repo *gitinterface.Repository, policy *Sta
 	}
 
 	if strings.HasPrefix(entry.RefName, gitinterface.TagRefPrefix) {
-		return verifyTagEntry(ctx, repo, policy, entry)
+		return verifyTagEntry(ctx, repo, policy, attestationsState, entry)
 	}
 
 	var (
@@ -690,104 +690,79 @@ func verifyEntry(ctx context.Context, repo *gitinterface.Repository, policy *Sta
 	return nil
 }
 
-func verifyTagEntry(ctx context.Context, repo *gitinterface.Repository, policy *State, entry *rsl.ReferenceEntry) error {
-	// 1. Find authorized public keys for tag's RSL entry
-	trustedKeys, err := policy.FindPublicKeysForPath(ctx, fmt.Sprintf("git:%s", entry.RefName))
+func verifyTagEntry(ctx context.Context, repo *gitinterface.Repository, policy *State, attestationsState *attestations.Attestations, entry *rsl.ReferenceEntry) error {
+	// Find authorized public keys for tag's RSL entry
+	verifiers, err := policy.FindVerifiersForPath(fmt.Sprintf("%s:%s", gitReferenceRuleScheme, entry.RefName))
 	if err != nil {
 		return err
 	}
 
-	if len(trustedKeys) == 0 {
-		allKeys, err := policy.PublicKeys()
+	if len(verifiers) == 0 {
+		// This is a change in behaviour, we're dropping looking at all keys in a state.
+		// That's only meant for verify-tag workflows, which we may also want to remove.
+		return nil
+	}
+
+	var authorizationAttestation *sslibdsse.Envelope
+	if attestationsState != nil {
+		authorizationAttestation, err = getAuthorizationAttestation(repo, attestationsState, entry)
 		if err != nil {
 			return err
 		}
-
-		// FIXME: decide if we want to pass around map or slice for these APIs
-		for _, key := range allKeys {
-			trustedKeys = append(trustedKeys, key)
-		}
 	}
 
-	goGitRepo, err := repo.GetGoGitRepository()
-	if err != nil {
-		return fmt.Errorf("unable to load repository: %w", err)
-	}
-
-	// 2. Find commit object for the RSL entry
-	commitObj, err := gitinterface.GetCommit(goGitRepo, plumbing.NewHash(entry.ID.String()))
-	if err != nil {
-		return err
-	}
-
-	// 3. Use each trusted key to verify signature
+	// Use each verifier to verify signature
 	rslEntryVerified := false
-	for _, key := range trustedKeys {
-		err := gitinterface.VerifyCommitSignature(ctx, commitObj, key)
+	for _, verifier := range verifiers {
+		err := verifier.Verify(ctx, entry.ID, authorizationAttestation)
 		if err == nil {
 			// Signature verification succeeded
 			rslEntryVerified = true
 			break
-		}
-		if errors.Is(err, gitinterface.ErrUnknownSigningMethod) {
-			// We encounter this for key types that can be used for gittuf
-			// policy metadata but not Git objects
-			continue
-		}
-		if !errors.Is(err, gitinterface.ErrIncorrectVerificationKey) {
+		} else if !errors.Is(err, ErrVerifierConditionsUnmet) {
 			// Unexpected error
 			return err
 		}
-		// Haven't found a valid key, continue with next key
+		// Haven't found a valid verifier, continue with next key
 	}
 
 	if !rslEntryVerified {
 		return fmt.Errorf("verifying RSL entry failed, %w", ErrUnauthorizedSignature)
 	}
 
-	// 4. Verify tag object
+	// Verify tag object
 	tagObjVerified := false
-	tagObj, err := gitinterface.GetTag(goGitRepo, plumbing.NewHash(entry.TargetID.String()))
-	if err != nil {
-		// Likely indicates the ref is not pointing to a tag object
-		// What about lightweight tags?
-		return err
-	}
-
-	entryTagRef, err := goGitRepo.Reference(plumbing.ReferenceName(entry.RefName), true)
-	if err != nil {
-		return err
-	}
-
-	if entry.TargetID.String() != entryTagRef.Hash().String() && entry.TargetID.String() != tagObj.Target.String() {
-		return fmt.Errorf("verifying RSL entry failed, tag reference set to unexpected target")
-	}
-
-	if len(tagObj.PGPSignature) == 0 {
-		return fmt.Errorf(noSignatureMessage)
-	}
-
-	for _, key := range trustedKeys {
-		err := gitinterface.VerifyTagSignature(ctx, tagObj, key)
+	for _, verifier := range verifiers {
+		// explicitly not looking at the attestation
+		// that applies to the _push_
+		err := verifier.Verify(ctx, entry.TargetID, nil)
 		if err == nil {
 			// Signature verification succeeded
 			tagObjVerified = true
 			break
-		}
-		if errors.Is(err, gitinterface.ErrUnknownSigningMethod) {
-			// We encounter this for key types that can be used for gittuf
-			// policy metadata but not Git objects
-			continue
-		}
-		if !errors.Is(err, gitinterface.ErrIncorrectVerificationKey) {
+		} else if !errors.Is(err, ErrVerifierConditionsUnmet) {
 			// Unexpected error
 			return err
 		}
-		// Haven't found a valid key, continue with next key
+		// Haven't found a valid verifier, continue with next key
 	}
 
 	if !tagObjVerified {
 		return fmt.Errorf("verifying tag object's signature failed, %w", ErrUnauthorizedSignature)
+	}
+
+	entryTagRef, err := repo.GetReference(entry.RefName)
+	if err != nil {
+		return err
+	}
+
+	tagTargetID, err := repo.GetTagTarget(entry.TargetID)
+	if err != nil {
+		return err
+	}
+
+	if entry.TargetID != entryTagRef && entry.TargetID != tagTargetID {
+		return fmt.Errorf("verifying RSL entry failed, tag reference set to unexpected target")
 	}
 
 	return nil
