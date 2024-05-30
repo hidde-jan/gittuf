@@ -66,7 +66,7 @@ func TestClone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := remoteRepo.RecordRSLEntryForReference(refName, false); err != nil {
+	if err := remoteRepo.RecordRSLEntryForReference(refName, "", false); err != nil {
 		t.Fatal(err)
 	}
 	if err := remoteRepo.r.Storer.SetReference(plumbing.NewSymbolicReference(plumbing.HEAD, plumbing.ReferenceName(refName))); err != nil {
@@ -75,7 +75,7 @@ func TestClone(t *testing.T) {
 	if err := remoteRepo.r.Storer.SetReference(plumbing.NewHashReference(plumbing.ReferenceName(anotherRefName), commitID)); err != nil {
 		t.Fatal(err)
 	}
-	if err := remoteRepo.RecordRSLEntryForReference(anotherRefName, false); err != nil {
+	if err := remoteRepo.RecordRSLEntryForReference(anotherRefName, "", false); err != nil {
 		t.Fatal(err)
 	}
 

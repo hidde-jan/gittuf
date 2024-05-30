@@ -25,21 +25,34 @@ var (
 
 // RecordRSLEntryForReference is the interface for the user to add an RSL entry
 // for the specified Git reference.
-func (r *Repository) RecordRSLEntryForReference(refName string, signCommit bool) error {
+func (r *Repository) RecordRSLEntryForReference(srcRefName, dstRefName string, signCommit bool) error {
 	slog.Debug("Identifying absolute reference path...")
-	absRefName, err := gitinterface.AbsoluteReference(r.r, refName)
+	srcRefName, err := gitinterface.AbsoluteReference(r.r, srcRefName)
 	if err != nil {
 		return err
 	}
 
-	slog.Debug(fmt.Sprintf("Loading current state of '%s'...", absRefName))
-	ref, err := r.r.Reference(plumbing.ReferenceName(absRefName), true)
+	if dstRefName == "" {
+		dstRefName = srcRefName
+	} else {
+		// dst differs from src
+		// Eg: git push <remote> <src>:<dst>
+		slog.Debug("Destination reference path is different, identifying absolute reference path...")
+		dstRefName, err = gitinterface.AbsoluteReference(r.r, dstRefName)
+		if err != nil {
+			return err
+		}
+	}
+
+	// The tip of the ref is always from the srcRefName (local)
+	slog.Debug(fmt.Sprintf("Loading current state of '%s'...", srcRefName))
+	ref, err := r.r.Reference(plumbing.ReferenceName(srcRefName), true)
 	if err != nil {
 		return err
 	}
 
 	slog.Debug("Checking for existing entry for reference with same target...")
-	isDuplicate, err := r.isDuplicateEntry(absRefName, ref.Hash())
+	isDuplicate, err := r.isDuplicateEntry(dstRefName, ref.Hash())
 	if err != nil {
 		return err
 	}
@@ -50,30 +63,44 @@ func (r *Repository) RecordRSLEntryForReference(refName string, signCommit bool)
 	// TODO: once policy verification is in place, the signing key used by
 	// signCommit must be verified for the refName in the delegation tree.
 
+	// The entry is created with dstRefName (which is the same as srcRefName if
+	// unspecified)
 	slog.Debug("Creating RSL reference entry...")
-	return rsl.NewReferenceEntry(absRefName, ref.Hash()).Commit(r.r, signCommit)
+	return rsl.NewReferenceEntry(dstRefName, ref.Hash()).Commit(r.r, signCommit)
 }
 
 // RecordRSLEntryForReferenceAtTarget is a special version of
 // RecordRSLEntryForReference used for evaluation. It is only invoked when
 // gittuf is explicitly set in developer mode.
-func (r *Repository) RecordRSLEntryForReferenceAtTarget(refName string, targetID string, signingKeyBytes []byte) error {
+func (r *Repository) RecordRSLEntryForReferenceAtTarget(srcRefName, dstRefName, targetID string, signingKeyBytes []byte) error {
 	// Double check that gittuf is in developer mode
 	if !dev.InDevMode() {
 		return dev.ErrNotInDevMode
 	}
 
 	slog.Debug("Identifying absolute reference path...")
-	absRefName, err := gitinterface.AbsoluteReference(r.r, refName)
+	srcRefName, err := gitinterface.AbsoluteReference(r.r, srcRefName)
 	if err != nil {
 		return err
+	}
+
+	if dstRefName == "" {
+		dstRefName = srcRefName
+	} else {
+		// dst differs from src
+		// Eg: git push <remote> <src>:<dst>
+		slog.Debug("Destination reference path is different, identifying absolute reference path...")
+		dstRefName, err = gitinterface.AbsoluteReference(r.r, dstRefName)
+		if err != nil {
+			return err
+		}
 	}
 
 	// TODO: once policy verification is in place, the signing key used by
 	// signCommit must be verified for the refName in the delegation tree.
 
 	slog.Debug("Creating RSL reference entry...")
-	return rsl.NewReferenceEntry(absRefName, plumbing.NewHash(targetID)).CommitUsingSpecificKey(r.r, signingKeyBytes)
+	return rsl.NewReferenceEntry(dstRefName, plumbing.NewHash(targetID)).CommitUsingSpecificKey(r.r, signingKeyBytes)
 }
 
 // RecordRSLAnnotation is the interface for the user to add an RSL annotation

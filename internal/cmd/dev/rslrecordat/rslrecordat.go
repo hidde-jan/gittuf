@@ -14,9 +14,17 @@ import (
 type options struct {
 	targetID       string
 	signingKeyPath string
+	dstRef         string
 }
 
 func (o *options) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(
+		&o.dstRef,
+		"dst-ref",
+		"",
+		"name of destination reference, if it differs from source reference",
+	)
+
 	cmd.Flags().StringVarP(
 		&o.targetID,
 		"target",
@@ -47,7 +55,7 @@ func (o *options) Run(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	return repo.RecordRSLEntryForReferenceAtTarget(args[0], o.targetID, signingKeyBytes)
+	return repo.RecordRSLEntryForReferenceAtTarget(args[0], o.dstRef, o.targetID, signingKeyBytes)
 }
 
 func New() *cobra.Command {

@@ -8,9 +8,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type options struct{}
+type options struct {
+	dstRef string
+}
 
-func (o *options) AddFlags(_ *cobra.Command) {}
+func (o *options) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(
+		&o.dstRef,
+		"dst-ref",
+		"",
+		"name of destination reference, if it differs from source reference",
+	)
+}
 
 func (o *options) Run(_ *cobra.Command, args []string) error {
 	repo, err := repository.LoadRepository()
@@ -18,7 +27,7 @@ func (o *options) Run(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	return repo.RecordRSLEntryForReference(args[0], true)
+	return repo.RecordRSLEntryForReference(args[0], o.dstRef, true)
 }
 
 func New() *cobra.Command {

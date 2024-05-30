@@ -39,7 +39,7 @@ func TestRecordRSLEntryForReference(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := repo.RecordRSLEntryForReference("refs/heads/main", false); err != nil {
+	if err := repo.RecordRSLEntryForReference("refs/heads/main", "", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -67,7 +67,7 @@ func TestRecordRSLEntryForReference(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := repo.RecordRSLEntryForReference("main", false); err != nil {
+	if err := repo.RecordRSLEntryForReference("main", "", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -88,7 +88,7 @@ func TestRecordRSLEntryForReference(t *testing.T) {
 	assert.Equal(t, "refs/heads/main", entry.RefName)
 	assert.Equal(t, testHash, entry.TargetID)
 
-	err = repo.RecordRSLEntryForReference("main", false)
+	err = repo.RecordRSLEntryForReference("main", "", false)
 	assert.Nil(t, err)
 
 	rslRef, err = repo.r.Reference(rsl.Ref, true)
@@ -102,6 +102,22 @@ func TestRecordRSLEntryForReference(t *testing.T) {
 	}
 	// check that a duplicate entry has not been created
 	assert.Equal(t, entry.GetID(), entryType.GetID())
+
+	// Record entry for a different dst ref
+	err = repo.RecordRSLEntryForReference("refs/heads/main", "refs/heads/not-main", false)
+	assert.Nil(t, err)
+
+	entryType, err = rsl.GetLatestEntry(repo.r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, ok = entryType.(*rsl.ReferenceEntry)
+	if !ok {
+		t.Fatal(fmt.Errorf("invalid entry type"))
+	}
+
+	assert.Equal(t, testHash, entry.TargetID)
+	assert.Equal(t, "refs/heads/not-main", entry.RefName)
 }
 
 func TestRecordRSLEntryForReferenceAtTarget(t *testing.T) {
@@ -140,7 +156,7 @@ func TestRecordRSLEntryForReferenceAtTarget(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			err = repo.RecordRSLEntryForReferenceAtTarget(refName, commitID.String(), test.keyBytes)
+			err = repo.RecordRSLEntryForReferenceAtTarget(refName, "", commitID.String(), test.keyBytes)
 			assert.Nil(t, err)
 
 			latestEntry, err := rsl.GetLatestEntry(repo.r)
@@ -160,10 +176,10 @@ func TestRecordRSLEntryForReferenceAtTarget(t *testing.T) {
 			}
 
 			// We record an RSL entry for the commit in the new branch
-			err = repo.RecordRSLEntryForReferenceAtTarget(anotherRefName, newCommitID.String(), test.keyBytes)
+			err = repo.RecordRSLEntryForReferenceAtTarget(anotherRefName, "", newCommitID.String(), test.keyBytes)
 			assert.Nil(t, err)
 
-			// Finally, let's record a couple more commits and use the older of the two
+			// Let's record a couple more commits and use the older of the two
 			commitID, err = gitinterface.Commit(repo.r, emptyTreeHash, refName, "Another commit", false)
 			if err != nil {
 				t.Fatal(err)
@@ -173,8 +189,29 @@ func TestRecordRSLEntryForReferenceAtTarget(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			err = repo.RecordRSLEntryForReferenceAtTarget(refName, commitID.String(), test.keyBytes)
+			err = repo.RecordRSLEntryForReferenceAtTarget(refName, "", commitID.String(), test.keyBytes)
 			assert.Nil(t, err)
+
+			// Let's record a couple more commits and add an entry with a
+			// different dstRefName to the first rather than latest commit
+			commitID, err = gitinterface.Commit(repo.r, emptyTreeHash, refName, "Another commit", false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = gitinterface.Commit(repo.r, emptyTreeHash, refName, "Latest commit", false)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = repo.RecordRSLEntryForReferenceAtTarget(refName, anotherRefName, commitID.String(), test.keyBytes)
+			assert.Nil(t, err)
+
+			latestEntry, err = rsl.GetLatestEntry(repo.r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assert.Equal(t, anotherRefName, latestEntry.(*rsl.ReferenceEntry).RefName)
+			assert.Equal(t, commitID, latestEntry.(*rsl.ReferenceEntry).TargetID)
 		})
 	}
 }
@@ -200,7 +237,7 @@ func TestRecordRSLAnnotation(t *testing.T) {
 	err = repo.RecordRSLAnnotation([]string{plumbing.ZeroHash.String()}, false, "test annotation", false)
 	assert.ErrorIs(t, err, rsl.ErrRSLEntryNotFound)
 
-	if err := repo.RecordRSLEntryForReference("refs/heads/main", false); err != nil {
+	if err := repo.RecordRSLEntryForReference("refs/heads/main", "", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -267,7 +304,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if _, err := gitinterface.Commit(remoteRepo.r, gitinterface.EmptyTree(), refName, "Test commit", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := remoteRepo.RecordRSLEntryForReference(refName, false); err != nil {
+		if err := remoteRepo.RecordRSLEntryForReference(refName, "", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -283,7 +320,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if _, err := gitinterface.Commit(remoteRepo.r, gitinterface.EmptyTree(), refName, "Test commit", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := remoteRepo.RecordRSLEntryForReference(refName, false); err != nil {
+		if err := remoteRepo.RecordRSLEntryForReference(refName, "", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -317,7 +354,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if _, err := gitinterface.Commit(remoteRepo.r, gitinterface.EmptyTree(), refName, "Test commit", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := remoteRepo.RecordRSLEntryForReference(refName, false); err != nil {
+		if err := remoteRepo.RecordRSLEntryForReference(refName, "", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -359,7 +396,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if _, err := gitinterface.Commit(remoteRepo.r, gitinterface.EmptyTree(), refName, "Test commit", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := remoteRepo.RecordRSLEntryForReference(refName, false); err != nil {
+		if err := remoteRepo.RecordRSLEntryForReference(refName, "", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -375,7 +412,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if _, err := gitinterface.Commit(localRepo.r, gitinterface.EmptyTree(), refName, "Test commit", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := localRepo.RecordRSLEntryForReference(refName, false); err != nil {
+		if err := localRepo.RecordRSLEntryForReference(refName, "", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -409,7 +446,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if _, err := gitinterface.Commit(remoteRepo.r, gitinterface.EmptyTree(), refName, "Test commit", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := remoteRepo.RecordRSLEntryForReference(refName, false); err != nil {
+		if err := remoteRepo.RecordRSLEntryForReference(refName, "", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -425,7 +462,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if _, err := gitinterface.Commit(remoteRepo.r, gitinterface.EmptyTree(), refName, "Test commit", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := remoteRepo.RecordRSLEntryForReference(refName, false); err != nil {
+		if err := remoteRepo.RecordRSLEntryForReference(refName, "", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -433,7 +470,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if _, err := gitinterface.Commit(localRepo.r, gitinterface.EmptyTree(), anotherRefName, "Test commit", false); err != nil {
 			t.Fatal(err)
 		}
-		if err := localRepo.RecordRSLEntryForReference(anotherRefName, false); err != nil {
+		if err := localRepo.RecordRSLEntryForReference(anotherRefName, "", false); err != nil {
 			t.Fatal(err)
 		}
 

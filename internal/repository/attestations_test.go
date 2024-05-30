@@ -45,7 +45,7 @@ func TestAddAndRemoveReferenceAuthorization(t *testing.T) {
 	// Add a single commit
 	commitIDs := common.AddNTestCommitsToSpecifiedRef(t, r, absTargetRef, 1, gpgKeyBytes)
 	fromCommitID := commitIDs[0].String()
-	if err := repo.RecordRSLEntryForReference(targetRef, false); err != nil {
+	if err := repo.RecordRSLEntryForReference(targetRef, "", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -55,7 +55,7 @@ func TestAddAndRemoveReferenceAuthorization(t *testing.T) {
 	// Add two commits
 	commitIDs = common.AddNTestCommitsToSpecifiedRef(t, r, absFeatureRef, 2, gpgKeyBytes)
 	featureCommitID := commitIDs[1].String()
-	if err := repo.RecordRSLEntryForReference(featureRef, false); err != nil {
+	if err := repo.RecordRSLEntryForReference(featureRef, "", false); err != nil {
 		t.Fatal(err)
 	}
 
