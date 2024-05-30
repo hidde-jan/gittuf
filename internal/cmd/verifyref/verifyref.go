@@ -11,8 +11,9 @@ import (
 )
 
 type options struct {
-	latestOnly bool
-	fromEntry  string
+	latestOnly    bool
+	fromEntry     string
+	remoteRefName string
 }
 
 func (o *options) AddFlags(cmd *cobra.Command) {
@@ -31,6 +32,13 @@ func (o *options) AddFlags(cmd *cobra.Command) {
 	)
 
 	cmd.MarkFlagsMutuallyExclusive("latest-only", "from-entry")
+
+	cmd.Flags().StringVar(
+		&o.remoteRefName,
+		"remote-ref-name",
+		"",
+		"name of remote reference name, when it differs from the local name",
+	)
 }
 
 func (o *options) Run(cmd *cobra.Command, args []string) error {
@@ -44,10 +52,10 @@ func (o *options) Run(cmd *cobra.Command, args []string) error {
 			return dev.ErrNotInDevMode
 		}
 
-		return repo.VerifyRefFromEntry(cmd.Context(), args[0], o.fromEntry)
+		return repo.VerifyRefFromEntry(cmd.Context(), args[0], o.remoteRefName, o.fromEntry)
 	}
 
-	return repo.VerifyRef(cmd.Context(), args[0], o.latestOnly)
+	return repo.VerifyRef(cmd.Context(), args[0], o.remoteRefName, o.latestOnly)
 }
 
 func New() *cobra.Command {

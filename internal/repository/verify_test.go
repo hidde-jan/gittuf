@@ -19,6 +19,8 @@ func TestVerifyRef(t *testing.T) {
 	repo := createTestRepositoryWithPolicy(t, "")
 
 	refName := "refs/heads/main"
+	remoteRefName := "refs/heads/not-main"
+
 	if err := repo.r.Storer.SetReference(plumbing.NewHashReference(plumbing.ReferenceName(refName), plumbing.ZeroHash)); err != nil {
 		t.Fatal(err)
 	}
@@ -28,36 +30,52 @@ func TestVerifyRef(t *testing.T) {
 	entryID := common.CreateTestRSLReferenceEntryCommit(t, repo.r, entry, gpgKeyBytes)
 	entry.ID = entryID
 
+	// Add one entry for a different remote ref name
+	entry = rsl.NewReferenceEntry(remoteRefName, commitIDs[0])
+	entryID = common.CreateTestRSLReferenceEntryCommit(t, repo.r, entry, gpgKeyBytes)
+	entry.ID = entryID
+
 	tests := map[string]struct {
-		target     string
-		latestOnly bool
-		err        error
+		localRefName  string
+		remoteRefName string
+		latestOnly    bool
+		err           error
 	}{
 		"absolute ref, not full": {
-			target:     "refs/heads/main",
-			latestOnly: true,
+			localRefName: refName,
+			latestOnly:   true,
 		},
 		"absolute ref, full": {
-			target:     "refs/heads/main",
-			latestOnly: false,
+			localRefName: refName,
+			latestOnly:   false,
 		},
 		"relative ref, not full": {
-			target:     "main",
-			latestOnly: true,
+			localRefName: "main",
+			latestOnly:   true,
 		},
 		"relative ref, full": {
-			target:     "main",
-			latestOnly: false,
+			localRefName: "main",
+			latestOnly:   false,
 		},
 		"unknown ref, full": {
-			target:     "refs/heads/unknown",
-			latestOnly: false,
-			err:        rsl.ErrRSLEntryNotFound,
+			localRefName: "refs/heads/unknown",
+			latestOnly:   false,
+			err:          rsl.ErrRSLEntryNotFound,
+		},
+		"different local and remote ref names, not full": {
+			localRefName:  refName,
+			remoteRefName: refName,
+			latestOnly:    true,
+		},
+		"different local and remote ref names, full": {
+			localRefName:  refName,
+			remoteRefName: refName,
+			latestOnly:    false,
 		},
 	}
 
 	for name, test := range tests {
-		err := repo.VerifyRef(context.Background(), test.target, test.latestOnly)
+		err := repo.VerifyRef(context.Background(), test.localRefName, test.remoteRefName, test.latestOnly)
 		if test.err != nil {
 			assert.ErrorIs(t, err, test.err, fmt.Sprintf("unexpected error in test '%s'", name))
 		} else {
@@ -67,9 +85,9 @@ func TestVerifyRef(t *testing.T) {
 
 	// Add another commit
 	common.AddNTestCommitsToSpecifiedRef(t, repo.r, refName, 1, gpgKeyBytes)
-	err := repo.VerifyRef(context.Background(), refName, true)
+	err := repo.VerifyRef(context.Background(), refName, "", true)
 	assert.ErrorIs(t, err, ErrRefStateDoesNotMatchRSL)
-	err = repo.VerifyRef(context.Background(), refName, false)
+	err = repo.VerifyRef(context.Background(), refName, "", false)
 	assert.ErrorIs(t, err, ErrRefStateDoesNotMatchRSL)
 }
 
@@ -79,56 +97,79 @@ func TestVerifyRefFromEntry(t *testing.T) {
 	repo := createTestRepositoryWithPolicy(t, "")
 
 	refName := "refs/heads/main"
+	remoteRefName := "refs/heads/not-main"
 	if err := repo.r.Storer.SetReference(plumbing.NewHashReference(plumbing.ReferenceName(refName), plumbing.ZeroHash)); err != nil {
 		t.Fatal(err)
 	}
 
 	// Policy violation
 	commitIDs := common.AddNTestCommitsToSpecifiedRef(t, repo.r, refName, 1, gpgUnauthorizedKeyBytes)
+	// Violation for refName
 	entry := rsl.NewReferenceEntry(refName, commitIDs[0])
 	violatingEntryID := common.CreateTestRSLReferenceEntryCommit(t, repo.r, entry, gpgUnauthorizedKeyBytes)
+	// Violation for remoteRefName
+	entry = rsl.NewReferenceEntry(remoteRefName, commitIDs[0])
+	violatingRemoteRefNameEntryID := common.CreateTestRSLReferenceEntryCommit(t, repo.r, entry, gpgUnauthorizedKeyBytes)
 
-	// No policy violation
+	// No policy violation for refName
 	commitIDs = common.AddNTestCommitsToSpecifiedRef(t, repo.r, refName, 1, gpgKeyBytes)
+	// refName
 	entry = rsl.NewReferenceEntry(refName, commitIDs[0])
 	goodEntryID := common.CreateTestRSLReferenceEntryCommit(t, repo.r, entry, gpgKeyBytes)
+	// remoteRefName
+	entry = rsl.NewReferenceEntry(remoteRefName, commitIDs[0])
+	goodRemoteRefNameEntryID := common.CreateTestRSLReferenceEntryCommit(t, repo.r, entry, gpgKeyBytes)
 
-	// No policy violation (latest)
+	// No policy violation for refName (what we verify)
 	commitIDs = common.AddNTestCommitsToSpecifiedRef(t, repo.r, refName, 1, gpgKeyBytes)
 	entry = rsl.NewReferenceEntry(refName, commitIDs[0])
 	common.CreateTestRSLReferenceEntryCommit(t, repo.r, entry, gpgKeyBytes)
+	// No policy violation for remoteRefName (what we verify)
+	entry = rsl.NewReferenceEntry(remoteRefName, commitIDs[0])
+	common.CreateTestRSLReferenceEntryCommit(t, repo.r, entry, gpgKeyBytes)
 
 	tests := map[string]struct {
-		target      string
-		fromEntryID plumbing.Hash
-		err         error
+		localRefName  string
+		remoteRefName string
+		fromEntryID   plumbing.Hash
+		err           error
 	}{
 		"absolute ref, from non-violating": {
-			target:      "refs/heads/main",
-			fromEntryID: goodEntryID,
+			localRefName: "refs/heads/main",
+			fromEntryID:  goodEntryID,
 		},
 		"absolute ref, from violating": {
-			target:      "refs/heads/main",
-			fromEntryID: violatingEntryID,
-			err:         policy.ErrUnauthorizedSignature,
+			localRefName: "refs/heads/main",
+			fromEntryID:  violatingEntryID,
+			err:          policy.ErrUnauthorizedSignature,
 		},
 		"relative ref, from non-violating": {
-			target:      "main",
-			fromEntryID: goodEntryID,
+			localRefName: "main",
+			fromEntryID:  goodEntryID,
 		},
 		"relative ref, from violating": {
-			target:      "main",
-			fromEntryID: violatingEntryID,
-			err:         policy.ErrUnauthorizedSignature,
+			localRefName: "main",
+			fromEntryID:  violatingEntryID,
+			err:          policy.ErrUnauthorizedSignature,
 		},
 		"unknown ref": {
-			target: "refs/heads/unknown",
-			err:    rsl.ErrRSLEntryNotFound,
+			localRefName: "refs/heads/unknown",
+			err:          rsl.ErrRSLEntryNotFound,
+		},
+		"different local and remote ref names, from non-violating": {
+			localRefName:  refName,
+			remoteRefName: remoteRefName,
+			fromEntryID:   goodRemoteRefNameEntryID,
+		},
+		"different local and remote ref names, from violating": {
+			localRefName:  refName,
+			remoteRefName: remoteRefName,
+			fromEntryID:   violatingRemoteRefNameEntryID,
 		},
 	}
 
 	for name, test := range tests {
-		err := repo.VerifyRefFromEntry(testCtx, test.target, test.fromEntryID.String())
+		err := repo.VerifyRefFromEntry(testCtx, test.localRefName, test.remoteRefName, test.fromEntryID.String())
 		if test.err != nil {
 			assert.ErrorIs(t, err, test.err, fmt.Sprintf("unexpected error in test '%s'", name))
 		} else {
@@ -140,10 +181,10 @@ func TestVerifyRefFromEntry(t *testing.T) {
 	common.AddNTestCommitsToSpecifiedRef(t, repo.r, refName, 1, gpgKeyBytes)
 
 	// Verifying from only good entry tells us ref does not match RSL
-	err := repo.VerifyRefFromEntry(testCtx, refName, goodEntryID.String())
+	err := repo.VerifyRefFromEntry(testCtx, refName, "", goodEntryID.String())
 	assert.ErrorIs(t, err, ErrRefStateDoesNotMatchRSL)
 
 	// Verifying from violating entry tells us unauthorized signature
-	err = repo.VerifyRefFromEntry(testCtx, refName, violatingEntryID.String())
+	err = repo.VerifyRefFromEntry(testCtx, refName, "", violatingEntryID.String())
 	assert.ErrorIs(t, err, policy.ErrUnauthorizedSignature)
 }
