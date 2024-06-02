@@ -9,10 +9,12 @@ LDFLAGS=-buildid= -X github.com/gittuf/gittuf/internal/version.gitVersion=$(GIT_
 default : install
 
 build : test
-	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)"  -o dist/gittuf .
+	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o dist/gittuf .
+	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o dist/git-remote-gittuf ./internal/git-remote-gittuf
 
 install : test
 	CGO_ENABLED=0 go install -trimpath -ldflags "$(LDFLAGS)" github.com/gittuf/gittuf
+	CGO_ENABLED=0 go install -trimpath -ldflags "$(LDFLAGS)" github.com/gittuf/gittuf/internal/git-remote-gittuf
 
 test :
 	go test -v ./...
