@@ -14,11 +14,14 @@ import (
 )
 
 const (
-	Ref                                        = "refs/gittuf/attestations"
-	referenceAuthorizationsTreeEntryName       = "reference-authorizations"
-	githubPullRequestAttestationsTreeEntryName = "github-pull-requests"
-	initialCommitMessage                       = "Initial commit"
-	defaultCommitMessage                       = "Update attestations"
+	Ref = "refs/gittuf/attestations"
+
+	referenceAuthorizationsTreeEntryName               = "reference-authorizations"
+	githubPullRequestAttestationsTreeEntryName         = "github-pull-requests"
+	githubPullRequestApprovalAttestationsTreeEntryName = "github-pull-request-approvals"
+
+	initialCommitMessage = "Initial commit"
+	defaultCommitMessage = "Update attestations"
 )
 
 var ErrAttestationsExist = errors.New("cannot initialize attestations namespace as it exists already")
@@ -61,6 +64,8 @@ type Attestations struct {
 	// `<ref-path>/<commit-id>`, where `ref-path` is the absolute ref path, and
 	// `commit-id` is the ID of the merged commit.
 	githubPullRequestAttestations map[string]plumbing.Hash
+
+	githubPullRequestApprovalAttestations map[string]plumbing.Hash
 }
 
 // LoadCurrentAttestations inspects the repository's attestations namespace and
@@ -103,15 +108,19 @@ func LoadAttestationsForEntry(repo *git.Repository, entry *rsl.ReferenceEntry) (
 	}
 
 	var (
-		authorizationsTreeID     plumbing.Hash
-		githubPullRequestsTreeID plumbing.Hash
+		authorizationsTreeID             plumbing.Hash
+		githubPullRequestsTreeID         plumbing.Hash
+		githubPullRequestApprovalsTreeID plumbing.Hash
 	)
 
 	for _, e := range attestationsRootTree.Entries {
-		if e.Name == referenceAuthorizationsTreeEntryName {
+		switch e.Name {
+		case referenceAuthorizationsTreeEntryName:
 			authorizationsTreeID = e.Hash
-		} else if e.Name == githubPullRequestAttestationsTreeEntryName {
+		case githubPullRequestAttestationsTreeEntryName:
 			githubPullRequestsTreeID = e.Hash
+		case githubPullRequestApprovalAttestationsTreeEntryName:
+			githubPullRequestApprovalsTreeID = e.Hash
 		}
 	}
 
@@ -125,9 +134,15 @@ func LoadAttestationsForEntry(repo *git.Repository, entry *rsl.ReferenceEntry) (
 		return nil, err
 	}
 
+	githubPullRequestApprovalsTree, err := gitinterface.GetTree(repo, githubPullRequestApprovalsTreeID)
+	if err != nil {
+		return nil, err
+	}
+
 	attestations := &Attestations{
-		referenceAuthorizations:       map[string]plumbing.Hash{},
-		githubPullRequestAttestations: map[string]plumbing.Hash{},
+		referenceAuthorizations:               map[string]plumbing.Hash{},
+		githubPullRequestAttestations:         map[string]plumbing.Hash{},
+		githubPullRequestApprovalAttestations: map[string]plumbing.Hash{},
 	}
 
 	attestations.referenceAuthorizations, err = gitinterface.GetAllFilesInTree(authorizationsTree)
@@ -136,6 +151,11 @@ func LoadAttestationsForEntry(repo *git.Repository, entry *rsl.ReferenceEntry) (
 	}
 
 	attestations.githubPullRequestAttestations, err = gitinterface.GetAllFilesInTree(githubPullRequestsTree)
+	if err != nil {
+		return nil, err
+	}
+
+	attestations.githubPullRequestApprovalAttestations, err = gitinterface.GetAllFilesInTree(githubPullRequestApprovalsTree)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +194,17 @@ func (a *Attestations) Commit(repo *git.Repository, commitMessage string, signCo
 		Name: githubPullRequestAttestationsTreeEntryName,
 		Mode: filemode.Dir,
 		Hash: githubPullRequestsTreeID,
+	})
+
+	// Add GitHub pull request approvals tree
+	githubPullRequestApprovalsTreeID, err := treeBuilder.WriteRootTreeFromBlobIDs(a.githubPullRequestApprovalAttestations)
+	if err != nil {
+		return err
+	}
+	attestationsTreeEntries = append(attestationsTreeEntries, object.TreeEntry{
+		Name: githubPullRequestApprovalAttestationsTreeEntryName,
+		Mode: filemode.Dir,
+		Hash: githubPullRequestApprovalsTreeID,
 	})
 
 	attestationsTreeID, err := gitinterface.WriteTree(repo, attestationsTreeEntries)
