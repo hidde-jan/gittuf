@@ -43,6 +43,9 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 	for stdInScanner.Scan() {
 		command := stdInScanner.Bytes()
 
+		log("packet mode:", isPacketMode)
+		log("input post scanning:", command, string(command))
+
 		switch currentState {
 		case start:
 			log("state: start")
@@ -153,6 +156,22 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 
 					for helperStdOutScanner.Scan() {
 						output := helperStdOutScanner.Bytes()
+
+						if bytes.Contains(output, []byte(gittufRefPrefix)) {
+							// Sometimes we may have GIT_PROTOCOL v0/v1
+							// response, where refs are advertised right away
+							refAd := strings.TrimSpace(string(output)[4:]) // remove the length prefix
+							if i := strings.IndexByte(refAd, '\x00'); i > 0 {
+								// this checks if the gittuf entry is the very first
+								// returned (unlikely because of HEAD)
+								refAd = refAd[:i] // drop everything from null byte onwards
+							}
+							refAdSplit := strings.Split(refAd, " ")
+
+							if strings.HasPrefix(refAdSplit[1], gittufRefPrefix) {
+								gittufRefsTips[refAdSplit[1]] = refAdSplit[0]
+							}
+						}
 
 						if _, err := os.Stdout.Write(output); err != nil {
 							return nil, false, err
@@ -435,8 +454,12 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 			case gitUploadPack:
 				if bytes.Contains(command, []byte("command=ls-refs")) {
 					currentState = lsRefs
-				} else if bytes.Contains(command, []byte("command=fetch")) {
+				} else if bytes.Contains(command, []byte("command=fetch")) || bytes.Contains(command, []byte("want")) {
 					currentState = requestingWants
+					// we see want when we're not in protocol v2
+					// also, here, the entire list of wants is nested in packet format
+					// pktlength(pktlength(line)...)
+					// we have to recognize we're in v0/1 and store, interpose, recalculate packet encoding, then send to ssh subprocess
 				}
 			}
 
