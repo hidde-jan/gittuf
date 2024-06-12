@@ -17,6 +17,9 @@ install : test
 test :
 	go test -v ./...
 
+coverage :
+	go test -covermode=atomic `go list ./... | grep -v -f .test_ignore.txt`
+
 fmt :
 	go fmt ./...
 
