@@ -231,6 +231,17 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 				currentState = serviceRouter
 
 			case bytes.HasPrefix(command, []byte("list for-push")):
+				/*
+					git: list for-push // wants to know remote ref statuses
+					us: ssh...git-receive-pack
+					ssh: list of refs
+					us (to git): list of refs // trailing newline
+
+					git: push cmds
+					us: track list of push cmds, create RSL entry for each
+					us (to ssh): push cmds (receive-pack format) // also track oldTip for eachRef
+					us (to ssh): git pack-objects > ssh // include object range desired
+				*/
 				log("cmd: list for-push")
 				isPush = true
 
