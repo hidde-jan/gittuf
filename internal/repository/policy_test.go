@@ -16,7 +16,7 @@ func TestPushPolicy(t *testing.T) {
 
 	t.Run("successful push", func(t *testing.T) {
 		remoteTmpDir := t.TempDir()
-		remoteRepo := gitinterface.CreateTestGitRepository(t, remoteTmpDir)
+		remoteRepo := gitinterface.CreateTestGitRepository(t, remoteTmpDir, false)
 
 		localRepo := createTestRepositoryWithPolicy(t, "")
 
@@ -42,7 +42,7 @@ func TestPushPolicy(t *testing.T) {
 
 	t.Run("divergent policies, unsuccessful push", func(t *testing.T) {
 		remoteTmpDir := t.TempDir()
-		remoteRepo := gitinterface.CreateTestGitRepository(t, remoteTmpDir)
+		remoteRepo := gitinterface.CreateTestGitRepository(t, remoteTmpDir, false)
 
 		if err := rsl.NewReferenceEntry(policy.PolicyRef, gitinterface.ZeroHash).Commit(remoteRepo, false); err != nil {
 			t.Fatal(err)
@@ -74,7 +74,7 @@ func TestPullPolicy(t *testing.T) {
 		}
 
 		localTmpDir := t.TempDir()
-		localRepoR := gitinterface.CreateTestGitRepository(t, localTmpDir)
+		localRepoR := gitinterface.CreateTestGitRepository(t, localTmpDir, false)
 		localRepo := &Repository{r: localRepoR}
 
 		if err := localRepo.r.CreateRemote(remoteName, remoteTmpDir); err != nil {
@@ -98,7 +98,7 @@ func TestPullPolicy(t *testing.T) {
 		createTestRepositoryWithPolicy(t, remoteTmpDir)
 
 		localTmpDir := t.TempDir()
-		localRepoR := gitinterface.CreateTestGitRepository(t, localTmpDir)
+		localRepoR := gitinterface.CreateTestGitRepository(t, localTmpDir, false)
 		localRepo := &Repository{r: localRepoR}
 
 		if err := rsl.NewReferenceEntry(policy.PolicyRef, gitinterface.ZeroHash).Commit(localRepo.r, false); err != nil {

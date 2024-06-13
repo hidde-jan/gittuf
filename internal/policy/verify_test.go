@@ -986,7 +986,7 @@ func TestStateVerifyNewState(t *testing.T) {
 
 func TestVerifier(t *testing.T) {
 	tmpDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tmpDir)
+	repo := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 
 	gpgKey, err := gpg.LoadGPGKeyFromBytes(gpgPubKeyBytes)
 	if err != nil {

@@ -43,9 +43,9 @@ func createTestRepositoryWithRoot(t *testing.T, location string) (*Repository, [
 
 	if location == "" {
 		tempDir := t.TempDir()
-		repo = gitinterface.CreateTestGitRepository(t, tempDir)
+		repo = gitinterface.CreateTestGitRepository(t, tempDir, false)
 	} else {
-		repo = gitinterface.CreateTestGitRepository(t, location)
+		repo = gitinterface.CreateTestGitRepository(t, location, false)
 	}
 	if err != nil {
 		t.Fatal(err)

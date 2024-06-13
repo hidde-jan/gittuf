@@ -31,7 +31,7 @@ func TestLoadCurrentAttestations(t *testing.T) {
 
 	t.Run("no RSL entry", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		attestations, err := LoadCurrentAttestations(repo)
 		assert.Nil(t, err)
@@ -40,7 +40,7 @@ func TestLoadCurrentAttestations(t *testing.T) {
 
 	t.Run("with RSL entry and with an attestation", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		blobID, err := repo.WriteBlob(testEnvBytes)
 		if err != nil {
@@ -78,7 +78,7 @@ func TestLoadAttestationsForEntry(t *testing.T) {
 
 	t.Run("with RSL entry and no an attestation", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		authorizations := map[string]gitinterface.Hash{}
 
@@ -99,7 +99,7 @@ func TestLoadAttestationsForEntry(t *testing.T) {
 
 	t.Run("with RSL entry and with an attestation", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		blobID, err := repo.WriteBlob(testEnvBytes)
 		if err != nil {
@@ -141,7 +141,7 @@ func TestAttestationsCommit(t *testing.T) {
 	}
 
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	blobID, err := repo.WriteBlob(testEnvBytes)
 	if err != nil {

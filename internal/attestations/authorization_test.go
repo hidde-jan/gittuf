@@ -46,7 +46,7 @@ func TestSetReferenceAuthorization(t *testing.T) {
 	featureZeroZero := createReferenceAuthorizationAttestationEnvelopes(t, testAnotherRef, testID, testID)
 
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	attestations := &Attestations{}
 
@@ -71,7 +71,7 @@ func TestRemoveReferenceAuthorization(t *testing.T) {
 	featureZeroZero := createReferenceAuthorizationAttestationEnvelopes(t, testAnotherRef, testID, testID)
 
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	attestations := &Attestations{}
 
@@ -108,7 +108,7 @@ func TestGetReferenceAuthorizationFor(t *testing.T) {
 	featureZeroZero := createReferenceAuthorizationAttestationEnvelopes(t, testAnotherRef, testID, testID)
 
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	attestations := &Attestations{}
 

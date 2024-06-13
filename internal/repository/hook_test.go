@@ -15,7 +15,7 @@ import (
 func TestUpdatePrePushHook(t *testing.T) {
 	t.Run("write hook", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tmpDir)
+		repo := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 
 		r := &Repository{r: repo}
 
@@ -30,7 +30,7 @@ func TestUpdatePrePushHook(t *testing.T) {
 
 	t.Run("hook exists", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tmpDir)
+		repo := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 
 		r := &Repository{r: repo}
 
@@ -50,7 +50,7 @@ func TestUpdatePrePushHook(t *testing.T) {
 
 	t.Run("force overwrite hook", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tmpDir)
+		repo := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 
 		r := &Repository{r: repo}
 

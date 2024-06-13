@@ -13,13 +13,13 @@ import (
 	"github.com/gittuf/gittuf/internal/gitinterface"
 	"github.com/gittuf/gittuf/internal/policy"
 	"github.com/gittuf/gittuf/internal/rsl"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRecordRSLEntryForReference(t *testing.T) {
 	tempDir := t.TempDir()
-	r := gitinterface.CreateTestGitRepository(t, tempDir)
+	r := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	repo := &Repository{r: r}
 
@@ -77,7 +77,7 @@ func TestRecordRSLEntryForReferenceAtTarget(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			tmpDir := t.TempDir()
-			r := gitinterface.CreateTestGitRepository(t, tmpDir)
+			r := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 			repo := &Repository{r: r}
 
 			treeBuilder := gitinterface.NewReplacementTreeBuilder(repo.r)
@@ -131,7 +131,7 @@ func TestRecordRSLEntryForReferenceAtTarget(t *testing.T) {
 
 func TestRecordRSLAnnotation(t *testing.T) {
 	tempDir := t.TempDir()
-	r := gitinterface.CreateTestGitRepository(t, tempDir)
+	r := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	repo := &Repository{r: r}
 
@@ -193,7 +193,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 
 	t.Run("remote has updates for local", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		remoteR := gitinterface.CreateTestGitRepository(t, tmpDir)
+		remoteR := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 		remoteRepo := &Repository{r: remoteR}
 
 		treeBuilder := gitinterface.NewReplacementTreeBuilder(remoteR)
@@ -237,7 +237,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 
 	t.Run("remote has no updates for local", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		remoteR := gitinterface.CreateTestGitRepository(t, tmpDir)
+		remoteR := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 		remoteRepo := &Repository{r: remoteR}
 
 		treeBuilder := gitinterface.NewReplacementTreeBuilder(remoteR)
@@ -273,7 +273,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 
 	t.Run("local is ahead of remote", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		remoteR := gitinterface.CreateTestGitRepository(t, tmpDir)
+		remoteR := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 		remoteRepo := &Repository{r: remoteR}
 
 		treeBuilder := gitinterface.NewReplacementTreeBuilder(remoteR)
@@ -298,6 +298,8 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		require.Nil(t, localR.SetGitConfig("user.name", "Jane Doe"))
+		require.Nil(t, localR.SetGitConfig("user.email", "jane.doe@example.com"))
 		localRepo := &Repository{r: localR}
 
 		// Simulate local actions
@@ -317,7 +319,7 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 
 	t.Run("remote and local have diverged", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		remoteR := gitinterface.CreateTestGitRepository(t, tmpDir)
+		remoteR := gitinterface.CreateTestGitRepository(t, tmpDir, false)
 		remoteRepo := &Repository{r: remoteR}
 
 		treeBuilder := gitinterface.NewReplacementTreeBuilder(remoteR)
@@ -342,6 +344,8 @@ func TestCheckRemoteRSLForUpdates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		require.Nil(t, localR.SetGitConfig("user.name", "Jane Doe"))
+		require.Nil(t, localR.SetGitConfig("user.email", "jane.doe@example.com"))
 		localRepo := &Repository{r: localR}
 
 		// Simulate remote actions
@@ -374,7 +378,7 @@ func TestPushRSL(t *testing.T) {
 
 	t.Run("successful push", func(t *testing.T) {
 		remoteTmpDir := t.TempDir()
-		remoteRepoR := gitinterface.CreateTestGitRepository(t, remoteTmpDir)
+		remoteRepoR := gitinterface.CreateTestGitRepository(t, remoteTmpDir, false)
 
 		localRepo := createTestRepositoryWithPolicy(t, "")
 		if err := localRepo.r.CreateRemote(remoteName, remoteTmpDir); err != nil {
@@ -393,7 +397,7 @@ func TestPushRSL(t *testing.T) {
 
 	t.Run("divergent RSLs, unsuccessful push", func(t *testing.T) {
 		remoteTmpDir := t.TempDir()
-		remoteRepoR := gitinterface.CreateTestGitRepository(t, remoteTmpDir)
+		remoteRepoR := gitinterface.CreateTestGitRepository(t, remoteTmpDir, false)
 
 		if err := rsl.NewReferenceEntry(policy.PolicyRef, gitinterface.ZeroHash).Commit(remoteRepoR, false); err != nil {
 			t.Fatal(err)
@@ -417,7 +421,7 @@ func TestPullRSL(t *testing.T) {
 		remoteRepo := createTestRepositoryWithPolicy(t, remoteTmpDir)
 
 		localTmpDir := t.TempDir()
-		localRepoR := gitinterface.CreateTestGitRepository(t, localTmpDir)
+		localRepoR := gitinterface.CreateTestGitRepository(t, localTmpDir, false)
 		localRepo := &Repository{r: localRepoR}
 		if err := localRepo.r.CreateRemote(remoteName, remoteTmpDir); err != nil {
 			t.Fatal(err)
@@ -438,7 +442,7 @@ func TestPullRSL(t *testing.T) {
 		createTestRepositoryWithPolicy(t, remoteTmpDir)
 
 		localTmpDir := t.TempDir()
-		localRepoR := gitinterface.CreateTestGitRepository(t, localTmpDir)
+		localRepoR := gitinterface.CreateTestGitRepository(t, localTmpDir, false)
 		localRepo := &Repository{r: localRepoR}
 		if err := localRepo.r.CreateRemote(remoteName, remoteTmpDir); err != nil {
 			t.Fatal(err)
@@ -455,11 +459,6 @@ func TestPullRSL(t *testing.T) {
 
 func TestGetRSLEntryLog(t *testing.T) {
 	r := createTestRepositoryWithPolicy(t, "")
-
-	mainRef := "refs/heads/main"
-	if err := r.r.Storer.SetReference(plumbing.NewHashReference(plumbing.ReferenceName(mainRef), plumbing.ZeroHash)); err != nil {
-		t.Fatal(err)
-	}
 
 	entries, annotationMap, err := GetRSLEntryLog(r)
 	assert.Nil(t, err)
@@ -481,5 +480,5 @@ func TestGetRSLEntryLog(t *testing.T) {
 
 	slices.Reverse(expected)
 	assert.Equal(t, expected, entries)
-	assert.Equal(t, map[plumbing.Hash][]*rsl.AnnotationEntry{}, annotationMap)
+	assert.Equal(t, map[gitinterface.Hash][]*rsl.AnnotationEntry{}, annotationMap)
 }

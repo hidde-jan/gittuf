@@ -23,17 +23,17 @@ var (
 // Hash represents a Git object hash. It is a lightweight wrapper around the
 // standard hex encoded representation of a SHA-1 or SHA-256 hash used by Git.
 
-type Hash []byte
+type Hash [sha1.Size]byte
 
 // String returns the hex encoded hash.
 func (h Hash) String() string {
-	return hex.EncodeToString(h)
+	return hex.EncodeToString(h[:])
 }
 
 // IsZero compares the hash to see if it's the zero hash for either SHA-1 or
 // SHA-256.
 func (h Hash) IsZero() bool {
-	return bytes.Equal(h, zeroSHA1HashBytes[:]) || bytes.Equal(h, zeroSHA256HashBytes[:])
+	return bytes.Equal(h[:], zeroSHA1HashBytes[:]) || bytes.Equal(h[:], zeroSHA256HashBytes[:])
 }
 
 // ZeroHash represents an empty Hash.
@@ -52,5 +52,5 @@ func NewHash(h string) (Hash, error) {
 		return ZeroHash, ErrInvalidHashEncoding
 	}
 
-	return hash, nil
+	return Hash(hash), nil
 }

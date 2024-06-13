@@ -5,8 +5,8 @@ package display
 import (
 	"fmt"
 
+	"github.com/gittuf/gittuf/internal/gitinterface"
 	"github.com/gittuf/gittuf/internal/rsl"
-	"github.com/go-git/go-git/v5/plumbing"
 )
 
 // PrepareRSLLogOutput takes the RSL, and returns a string representation of it,
@@ -27,11 +27,11 @@ entry <entryID> (skipped)
     Message:
       <message>
 */
-func PrepareRSLLogOutput(entries []*rsl.ReferenceEntry, annotationMap map[plumbing.Hash][]*rsl.AnnotationEntry) string {
+func PrepareRSLLogOutput(entries []*rsl.ReferenceEntry, annotationMap map[gitinterface.Hash][]*rsl.AnnotationEntry) string {
 	log := ""
 
 	for _, entry := range entries {
-		log += fmt.Sprintf("entry %v", entry.ID)
+		log += fmt.Sprintf("entry %s", entry.ID.String())
 
 		skipped := false
 		if annotations, ok := annotationMap[entry.ID]; ok {

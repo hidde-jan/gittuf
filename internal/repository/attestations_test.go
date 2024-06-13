@@ -17,7 +17,7 @@ func TestAddAndRemoveReferenceAuthorization(t *testing.T) {
 	t.Setenv(dev.DevModeKey, "1")
 
 	testDir := t.TempDir()
-	r := gitinterface.CreateTestGitRepository(t, testDir)
+	r := gitinterface.CreateTestGitRepository(t, testDir, false)
 
 	repo := &Repository{r: r}
 

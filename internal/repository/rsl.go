@@ -207,7 +207,7 @@ func (r *Repository) isDuplicateEntry(refName string, targetID gitinterface.Hash
 
 // GetRSLEntryLog gives us a list of all the rsl entries, and a map with a key being
 // a reference entry, and the value being an array of all applicable annotations for that reference entry
-func GetRSLEntryLog(repo *Repository) ([]*rsl.ReferenceEntry, map[plumbing.Hash][]*rsl.AnnotationEntry, error) {
+func GetRSLEntryLog(repo *Repository) ([]*rsl.ReferenceEntry, map[gitinterface.Hash][]*rsl.AnnotationEntry, error) {
 	firstEntry, _, err := rsl.GetFirstEntry(repo.r)
 	if err != nil {
 		return nil, nil, err

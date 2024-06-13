@@ -121,7 +121,7 @@ func LoadCurrentState(ctx context.Context, repo *gitinterface.Repository, ref st
 
 // LoadFirstState returns the State corresponding to the repository's first
 // active policy. It does not verify the root of trust since it is the initial policy.
-func LoadFirstState(ctx context.Context, repo *git.Repository) (*State, error) {
+func LoadFirstState(ctx context.Context, repo *gitinterface.Repository) (*State, error) {
 	firstEntry, _, err := rsl.GetFirstReferenceEntryForRef(repo, PolicyRef)
 	if err != nil {
 		return nil, err

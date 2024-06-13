@@ -16,7 +16,7 @@ const annotationMessage = "test annotation"
 
 func TestNewReferenceEntry(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	if err := NewReferenceEntry("refs/heads/main", gitinterface.ZeroHash).Commit(repo, false); err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ func TestNewReferenceEntry(t *testing.T) {
 
 func TestGetLatestEntry(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	if err := NewReferenceEntry("refs/heads/main", gitinterface.ZeroHash).Commit(repo, false); err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func TestGetLatestEntry(t *testing.T) {
 func TestGetLatestNonGittufReferenceEntry(t *testing.T) {
 	t.Run("mix of gittuf and non gittuf entries", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		// Add the first gittuf entry
 		if err := NewReferenceEntry("refs/gittuf/policy", gitinterface.ZeroHash).Commit(repo, false); err != nil {
@@ -155,7 +155,7 @@ func TestGetLatestNonGittufReferenceEntry(t *testing.T) {
 
 	t.Run("only gittuf entries", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		// Add the first gittuf entry
 		if err := NewReferenceEntry("refs/gittuf/policy", gitinterface.ZeroHash).Commit(repo, false); err != nil {
@@ -177,7 +177,7 @@ func TestGetLatestNonGittufReferenceEntry(t *testing.T) {
 
 func TestGetLatestReferenceEntryForRef(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	refName := "refs/heads/main"
 	otherRefName := "refs/heads/feature"
@@ -219,7 +219,7 @@ func TestGetLatestReferenceEntryForRef(t *testing.T) {
 func TestGetLatestReferenceEntryForRefBefore(t *testing.T) {
 	t.Run("no annotations", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		// RSL structure for the test
 		// main <- feature <- main <- feature <- main
@@ -262,7 +262,7 @@ func TestGetLatestReferenceEntryForRefBefore(t *testing.T) {
 
 	t.Run("with annotations", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		// RSL structure for the test
 		// main <- A <- feature <- A <- main <- A <- feature <- A <- main <- A
@@ -326,7 +326,7 @@ func TestGetLatestReferenceEntryForRefBefore(t *testing.T) {
 
 func TestGetEntry(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	if err := NewReferenceEntry("main", gitinterface.ZeroHash).Commit(repo, false); err != nil {
 		t.Fatal(err)
@@ -366,7 +366,7 @@ func TestGetEntry(t *testing.T) {
 
 func TestGetParentForEntry(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	// Assert no parent for first entry
 	if err := NewReferenceEntry("main", gitinterface.ZeroHash).Commit(repo, false); err != nil {
@@ -416,7 +416,7 @@ func TestGetParentForEntry(t *testing.T) {
 func TestGetNonGittufParentReferenceEntryForEntry(t *testing.T) {
 	t.Run("mix of gittuf and non gittuf entries", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		// Add the first gittuf entry
 		if err := NewReferenceEntry("refs/gittuf/policy", gitinterface.ZeroHash).Commit(repo, false); err != nil {
@@ -482,7 +482,7 @@ func TestGetNonGittufParentReferenceEntryForEntry(t *testing.T) {
 
 	t.Run("only gittuf entries", func(t *testing.T) {
 		tempDir := t.TempDir()
-		repo := gitinterface.CreateTestGitRepository(t, tempDir)
+		repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 		// Add the first gittuf entry
 		if err := NewReferenceEntry("refs/gittuf/policy", gitinterface.ZeroHash).Commit(repo, false); err != nil {
@@ -513,7 +513,7 @@ func TestGetNonGittufParentReferenceEntryForEntry(t *testing.T) {
 
 func TestGetFirstEntry(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	if err := NewReferenceEntry("first", gitinterface.ZeroHash).Commit(repo, false); err != nil {
 		t.Fatal(err)
@@ -551,7 +551,7 @@ func TestGetFirstEntry(t *testing.T) {
 
 func TestGetFirstReferenceEntryForRef(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	if err := NewReferenceEntry("first", gitinterface.ZeroHash).Commit(repo, false); err != nil {
 		t.Fatal(err)
@@ -589,7 +589,7 @@ func TestGetFirstReferenceEntryForRef(t *testing.T) {
 
 func TestGetFirstReferenceEntryForCommit(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	treeBuilder := gitinterface.NewReplacementTreeBuilder(repo)
 	emptyTreeHash, err := treeBuilder.WriteRootTreeFromBlobIDs(nil)
@@ -720,7 +720,7 @@ func TestGetReferenceEntriesInRange(t *testing.T) {
 	// return values as we go along
 
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	expectedEntries := []*ReferenceEntry{}
 	expectedAnnotationMap := map[gitinterface.Hash][]*AnnotationEntry{}
@@ -824,7 +824,7 @@ func TestGetReferenceEntriesInRangeForRef(t *testing.T) {
 	// return values as we go along
 
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	expectedEntries := []*ReferenceEntry{}
 	expectedAnnotationMap := map[gitinterface.Hash][]*AnnotationEntry{}
@@ -918,7 +918,7 @@ func TestGetLatestUnskippedReferenceEntryForRef(t *testing.T) {
 	refName := "refs/heads/main"
 
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	entryIDs := []gitinterface.Hash{}
 
@@ -983,7 +983,7 @@ func TestGetLatestUnskippedReferenceEntryForRefBefore(t *testing.T) {
 	refName := "refs/heads/main"
 
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	entryIDs := []gitinterface.Hash{}
 
@@ -1048,7 +1048,7 @@ func TestGetLatestUnskippedReferenceEntryForRefBefore(t *testing.T) {
 func TestAnnotationEntryRefersTo(t *testing.T) {
 	// We use these as stand-ins for actual RSL IDs that have the same data type
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	treeBuilder := gitinterface.NewReplacementTreeBuilder(repo)
 	emptyTreeID, err := treeBuilder.WriteRootTreeFromBlobIDs(nil)

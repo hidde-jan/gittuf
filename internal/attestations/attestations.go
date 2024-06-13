@@ -134,7 +134,7 @@ func (a *Attestations) Commit(repo *gitinterface.Repository, commitMessage strin
 	// We must reset to original attestation commit if err != nil from here onwards.
 
 	if err := rsl.NewReferenceEntry(Ref, newCommitID).Commit(repo, signCommit); err != nil {
-		if priorCommitID != gitinterface.ZeroHash {
+		if !priorCommitID.IsZero() {
 			return repo.ResetDueToError(err, Ref, priorCommitID)
 		}
 

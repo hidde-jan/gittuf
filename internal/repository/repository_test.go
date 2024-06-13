@@ -14,7 +14,7 @@ import (
 
 func TestLoadRepository(t *testing.T) {
 	tmpDir := t.TempDir()
-	gitinterface.CreateTestGitRepository(t, tmpDir)
+	gitinterface.CreateTestGitRepository(t, tmpDir, false)
 
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -32,7 +32,7 @@ func TestLoadRepository(t *testing.T) {
 
 func TestUnauthorizedKey(t *testing.T) {
 	tempDir := t.TempDir()
-	repo := gitinterface.CreateTestGitRepository(t, tempDir)
+	repo := gitinterface.CreateTestGitRepository(t, tempDir, false)
 
 	rootSigner, err := signerverifier.NewSignerVerifierFromSecureSystemsLibFormat(rootKeyBytes) //nolint:staticcheck
 	if err != nil {

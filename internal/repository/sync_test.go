@@ -3,7 +3,6 @@
 package repository
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -34,7 +33,7 @@ func TestClone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	remoteR := gitinterface.CreateTestGitRepository(t, remoteTmpDir)
+	remoteR := gitinterface.CreateTestGitRepository(t, remoteTmpDir, true)
 	remoteRepo := &Repository{r: remoteR}
 	treeBuilder := gitinterface.NewReplacementTreeBuilder(remoteR)
 	emptyTreeHash, err := treeBuilder.WriteRootTreeFromBlobIDs(nil)
@@ -45,7 +44,13 @@ func TestClone(t *testing.T) {
 	if err := remoteRepo.InitializeRoot(testCtx, rootSigner, false); err != nil {
 		t.Fatal(err)
 	}
+	if err := remoteRepo.AddRootKey(testCtx, rootSigner, targetsPubKey, false); err != nil {
+		t.Fatal(err)
+	}
 	if err := remoteRepo.AddTopLevelTargetsKey(testCtx, rootSigner, targetsPubKey, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := remoteRepo.SignRoot(testCtx, targetsSigner, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := remoteRepo.InitializeTargets(testCtx, targetsSigner, policy.TargetsRoleName, false); err != nil {
@@ -76,15 +81,6 @@ func TestClone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	remoteRSLRefTip, err := remoteRepo.r.GetReference(rsl.Ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	remotePolicyRefTip, err := remoteRepo.r.GetReference(policy.PolicyRef)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	t.Run("successful clone without specifying dir", func(t *testing.T) {
 		localTmpDir := t.TempDir()
 
@@ -93,7 +89,7 @@ func TestClone(t *testing.T) {
 		}
 		defer os.Chdir(currentDir) //nolint:errcheck
 
-		repo, err := Clone(testCtx, remoteTmpDir, "", "")
+		repo, err := Clone(testCtx, remoteTmpDir, "", "", nil)
 		assert.Nil(t, err)
 		head, err := repo.r.GetSymbolicReferenceTarget("HEAD")
 		if err != nil {
@@ -118,7 +114,7 @@ func TestClone(t *testing.T) {
 		defer os.Chdir(currentDir) //nolint:errcheck
 
 		dirName := "myRepo"
-		repo, err := Clone(testCtx, remoteTmpDir, dirName, "")
+		repo, err := Clone(testCtx, remoteTmpDir, dirName, "", nil)
 		assert.Nil(t, err)
 		head, err := repo.r.GetSymbolicReferenceTarget("HEAD")
 		if err != nil {
@@ -146,7 +142,7 @@ func TestClone(t *testing.T) {
 		}
 		defer os.Chdir(currentDir) //nolint:errcheck
 
-		repo, err := Clone(testCtx, remoteTmpDir, "", anotherRefName)
+		repo, err := Clone(testCtx, remoteTmpDir, "", anotherRefName, nil)
 		assert.Nil(t, err)
 		head, err := repo.r.GetSymbolicReferenceTarget("HEAD")
 		if err != nil {
@@ -171,10 +167,10 @@ func TestClone(t *testing.T) {
 		}
 		defer os.Chdir(currentDir) //nolint:errcheck
 
-		_, err = Clone(testCtx, remoteTmpDir, "", "")
+		_, err = Clone(testCtx, remoteTmpDir, "", "", nil)
 		assert.Nil(t, err)
 
-		_, err = Clone(testCtx, remoteTmpDir, "", "")
+		_, err = Clone(testCtx, remoteTmpDir, "", "", nil)
 		assert.ErrorIs(t, err, ErrDirExists)
 	})
 
@@ -190,7 +186,7 @@ func TestClone(t *testing.T) {
 		if err := os.Mkdir(dirName, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		_, err = Clone(testCtx, remoteTmpDir, dirName, "")
+		_, err = Clone(testCtx, remoteTmpDir, dirName, "", nil)
 		assert.ErrorIs(t, err, ErrDirExists)
 	})
 
@@ -202,7 +198,7 @@ func TestClone(t *testing.T) {
 		}
 		defer os.Chdir(currentDir) //nolint:errcheck
 
-		repo, err := Clone(testCtx, remoteTmpDir+"//", "", "")
+		repo, err := Clone(testCtx, remoteTmpDir+"//", "", "", nil)
 		assert.Nil(t, err)
 		head, err := repo.r.GetSymbolicReferenceTarget("HEAD")
 		if err != nil {
@@ -236,14 +232,14 @@ func TestClone(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		repo, err := Clone(context.Background(), remoteTmpDir, "", "", []*tuf.Key{targetsPublicKey, rootPublicKey})
+		repo, err := Clone(testCtx, remoteTmpDir, "", "", []*tuf.Key{targetsPublicKey, rootPublicKey})
 		assert.Nil(t, err)
 
-		head, err := repo.r.Head()
+		head, err := repo.r.GetReference("HEAD")
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Equal(t, commitID, head.Hash())
+		assert.Equal(t, commitID, head)
 
 		assertLocalAndRemoteRefsMatch(t, repo.r, remoteRepo.r, rsl.Ref)
 		assertLocalAndRemoteRefsMatch(t, repo.r, remoteRepo.r, policy.PolicyRef)
