@@ -94,9 +94,51 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 				}
 
 			case bytes.HasPrefix(command, []byte("stateless-connect")):
+				/*
+					When we see stateless-connect, right now we know this means
+					a fetch is underway.
+
+					us: ssh -o SendEnv=GIT_PROTOCOL <url> 'git-upload-pack <repo>'
+					ssh:
+						if v2 {
+							server capabilities
+						} else {
+							server capabilities
+							refs and their states
+						}
+					Assuming v2:
+					us (to ssh): ls-refs // add gittuf prefix
+					ssh: refs and their states
+					us (to git): output of ls-refs
+					git: fetch, wants, haves
+					us (to ssh): fetch, wants, haves // add gittuf wants
+					ssh: acks (optionally triggers another round of wants, haves)
+					ssh: packfile
+					us (to git): acks, packfile
+
+					Assuming v0/v1:
+					git: wants, haves // NO FETCH HERE IIRC
+					us (to ssh): wants, haves // add gittuf wants
+					ssh: acks, packfile
+					us (to git): acks, packfile
+
+					Notes:
+						* v0/v1 of the pack protocol is only partially supported
+						  here.
+						* Once the service is invoked, all messages are wrapped
+						  in the packet-line format.
+						* In the v0/v1 format, each line is packet encoded, and
+						  the entire message is in turn packet encoded for
+						  wants/haves.
+						* The flushPkt is commonly used to signify end of a
+						  message.
+						* The endOfReadPkt is sent at the end of the packfile
+						  transmission.
+				*/
 				log("cmd: stateless-connect")
 				command = bytes.TrimSpace(command)
 				commandSplit := bytes.Split(command, []byte(" "))
+				// We can likely just set this to upload-pack
 				service = string(commandSplit[1])
 				log("found service", service)
 				isPacketMode = true
@@ -110,12 +152,14 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 				binary := sshCmd[0]
 				args := []string{}
 				if len(sshCmd) > 1 {
-					// not just binary
+					// not just binary in the git config / env
 					args = append(args, sshCmd[1:]...)
 				}
 				args = append(args, "-o", "SendEnv=GIT_PROTOCOL", host, sshExecCmd)
 
 				helper = exec.Command(binary, args...)
+				// We want to request GIT_PROTOCOL v2
+				// https://git-scm.com/docs/protocol-v2
 				helper.Env = append(os.Environ(), "GIT_PROTOCOL=version=2")
 				helper.Stderr = os.Stderr
 
@@ -456,7 +500,7 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 					currentState = lsRefs
 				} else if bytes.Contains(command, []byte("command=fetch")) || bytes.Contains(command, []byte("want")) {
 					currentState = requestingWants
-					// we see want when we're not in protocol v2
+					// we see "want" when we're not in protocol v2
 					// also, here, the entire list of wants is nested in packet format
 					// pktlength(pktlength(line)...)
 					// we have to recognize we're in v0/1 and store, interpose, recalculate packet encoding, then send to ssh subprocess
@@ -472,6 +516,7 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 			// state, this is a "routing" state. THIS MAY CHANGE!
 
 		case lsRefs:
+			// https://git-scm.com/docs/protocol-v2#_ls_refs
 			log("cmd: ls-refs")
 			if bytes.Equal(command, flushPkt) {
 				// add the gittuf ref-prefix right before the flushPkt
@@ -527,6 +572,7 @@ func handleSSH(_, url string) (map[string]string, bool, error) {
 			}
 
 		case requestingWants:
+			// https://git-scm.com/docs/protocol-v2#_fetch
 			log("cmd: fetch")
 
 			gittufWantsDone := false
