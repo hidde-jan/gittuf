@@ -16,9 +16,9 @@ import (
 
 // Basic smoke test for ssh package for all supported keys
 func TestSSH(t *testing.T) {
-	keyidRSA := "SHA256:ESJezAOo+BsiEpddzRXS6+wtF16FID4NCd+3gj96rFo"
-	keyidECDSA := "SHA256:oNYBImx035m3rl1Sn/+j5DPrlS9+zXn7k3mjNrC5eto"
-	keyidEd25519 := "SHA256:cewFulOIcROWnolPTGEQXG4q7xvLIn3kNTCMqdfoP4E"
+	keyidRSA := "18e93f6ad933230740636056030f38f955a59be344ff0f4ceda650d7570cbc51"
+	keyidECDSA := "0d836de37673a81f10fb85f7a950fa53024417fe065947c053c01f4c11cff7ae"
+	keyidEd25519 := "56533c87ee10a42ba72e47dbe31a56ab5204a07a5ce1c9519b22c77ed94d7ef3"
 
 	tests := []struct {
 		keyName  string

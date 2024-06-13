@@ -5,13 +5,16 @@ import (
 	"bytes"
 	"context"
 	"crypto"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os/exec"
 	"strings"
 
 	sv "github.com/gittuf/gittuf/internal/third_party/go-securesystemslib/signerverifier"
 	"github.com/hiddeco/sshsig"
+	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -22,8 +25,9 @@ const (
 
 // Verifier is a dsse.Verifier implementation for SSH keys.
 type Verifier struct {
-	keyID  string
-	sshKey ssh.PublicKey
+	sslibKey *sv.SSLibKey
+	keyID    string
+	sshKey   ssh.PublicKey
 }
 
 // Verify implements the dsse.Verifier.Verify interface for SSH keys.
@@ -54,6 +58,10 @@ func (v *Verifier) KeyID() (string, error) {
 // FIXME: consider removing in interface, "Verify()" is all that's needed
 func (v *Verifier) Public() crypto.PublicKey {
 	return v.sshKey.(ssh.CryptoPublicKey).CryptoPublicKey()
+}
+
+func (v *Verifier) MetadataKey() *sv.SSLibKey {
+	return v.sslibKey
 }
 
 // Signer is a dsse.Signer implementation for SSH keys.
@@ -96,14 +104,22 @@ func NewKeyFromFile(path string) (*sv.SSLibKey, error) {
 		return nil, fmt.Errorf("failed to parse SSH2 key: %w", err)
 	}
 
-	return &sv.SSLibKey{
+	key := &sv.SSLibKey{
 		KeyID:   ssh.FingerprintSHA256(sshPub),
 		KeyType: SSHKeyType,
 		Scheme:  sshPub.Type(),
 		KeyVal: sv.KeyVal{
 			Public: base64.StdEncoding.EncodeToString(sshPub.Marshal()),
 		},
-	}, nil
+	}
+
+	keyID, err := calculateKeyID(key)
+	if err != nil {
+		return nil, err
+	}
+	key.KeyID = keyID
+
+	return key, nil
 }
 
 // NewVerifierFromKey creates a new Verifier from SSlibKey of type ssh.
@@ -116,8 +132,9 @@ func NewVerifierFromKey(key *sv.SSLibKey) (*Verifier, error) {
 		return nil, fmt.Errorf("failed to parse ssh public key material: %w", err)
 	}
 	return &Verifier{
-		keyID:  key.KeyID,
-		sshKey: sshKey,
+		sslibKey: key,
+		keyID:    key.KeyID,
+		sshKey:   sshKey,
 	}, nil
 }
 
@@ -173,4 +190,21 @@ func parseSSH2Key(data string) (ssh.PublicKey, error) {
 	// Parse key material
 	body := strings.Join(lines[i:], "")
 	return parseSSH2Body(body)
+}
+
+func calculateKeyID(k *sv.SSLibKey) (string, error) {
+	key := map[string]any{
+		"keytype":               k.KeyType,
+		"scheme":                k.Scheme,
+		"keyid_hash_algorithms": k.KeyIDHashAlgorithms,
+		"keyval": map[string]string{
+			"public": k.KeyVal.Public,
+		},
+	}
+	canonical, err := cjson.EncodeCanonical(key)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(canonical)
+	return hex.EncodeToString(digest[:]), nil
 }

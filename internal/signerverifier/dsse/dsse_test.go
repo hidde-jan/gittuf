@@ -38,12 +38,12 @@ func TestSignEnvelope(t *testing.T) {
 	}
 
 	assert.Len(t, env.Signatures, 1)
-	assert.Equal(t, "SHA256:oNYBImx035m3rl1Sn/+j5DPrlS9+zXn7k3mjNrC5eto", env.Signatures[0].KeyID)
+	assert.Equal(t, "0d836de37673a81f10fb85f7a950fa53024417fe065947c053c01f4c11cff7ae", env.Signatures[0].KeyID)
 
 	env, err = SignEnvelope(context.Background(), env, signer)
 	assert.Nil(t, err)
 	assert.Len(t, env.Signatures, 1)
-	assert.Equal(t, "SHA256:oNYBImx035m3rl1Sn/+j5DPrlS9+zXn7k3mjNrC5eto", env.Signatures[0].KeyID)
+	assert.Equal(t, "0d836de37673a81f10fb85f7a950fa53024417fe065947c053c01f4c11cff7ae", env.Signatures[0].KeyID)
 }
 
 func TestVerifyEnvelope(t *testing.T) {
